@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>To-Do List</h1>
+        
+        <form id="addTaskForm">
+            <input type="text" id="taskInput" placeholder="Enter task">
+            <button type="submit">Add Task</button>
+        </form>
+        
+        <ul id="tasksList"></ul>
+    </div>
+    
+    <script>
+        async function fetchTasks() {
+            const response = await fetch('/tasks');
+            const tasks = await response.json();
+            return tasks;
+        }
+
+        async function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            tasksList.innerHTML = '';
+            const tasks = await fetchTasks();
+            tasks.forEach(task => {
+                const listItem = document.createElement('li');
+                listItem.textContent = task.task;
+                if (task.completed) {
+                    listItem.style.textDecoration = 'line-through';
+                }
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.addEventListener('click', () => {
+                    const newTask = prompt('Enter new task:', task.task);
+                    if (newTask !== null) {
+                        updateTask(task.id, newTask);
+                    }
+                });
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', () => deleteTask(task.id));
+                const completeButton = document.createElement('button');
+                completeButton.textContent = 'Complete';
+                completeButton.addEventListener('click', () => markAsCompleted(task.id, !task.completed));
+                listItem.appendChild(editButton);
+                listItem.appendChild(deleteButton);
+                listItem.appendChild(completeButton);
+                tasksList.appendChild(listItem);
+            });
+        }
+
+        async function addTask(task) {
+            await fetch('/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ task })
+            });
+            renderTasks();
+        }
+
+        async function updateTask(id, task) {
+            await fetch(`/tasks/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ task })
+            });
+            renderTasks();
+        }
+
+        async function deleteTask(id) {
+            await fetch(`/tasks/${id}`, {
+                method: 'DELETE'
+            });
+            renderTasks();
+        }
+
+        async function markAsCompleted(id, completed) {
+            await fetch(`/tasks/${id}/complete`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ completed })
+            });
+            renderTasks();
+        }
+
+        document.getElementById('addTaskForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const taskInput = document.getElementById('taskInput');
+            const task = taskInput.value.trim();
+            if (task !== '') {
+                await addTask(task);
+                taskInput.value = '';
+            }
+        });
+
+        window.addEventListener('load', renderTasks);
+    </script>
+</body>
+</html>
